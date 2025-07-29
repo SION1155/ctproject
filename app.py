@@ -27,6 +27,9 @@ with col1:
         url = 'https://www.youtube.com/watch?v=XyEOEBsa8I4'
         st.info('Content..')
         st.video(url)
+    with st.expander('image content...'):
+        imgfilepath = './images/han.jpg'
+        st.image(imgfilepath)
     with st.expander('Content #2...'):
         #st.write(html, unsafe_allow_html=True)
         htmlviewer.html(html, height=600)
