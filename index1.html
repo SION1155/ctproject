@@ -1,0 +1,146 @@
+<html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>60갑자로 연도 표현하기</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; }
+    h1 { background: #0073cf; color: white; padding: 10px; }
+    .section { margin-top: 20px; }
+    #questionBox { border: 2px solid #0073cf; padding: 20px; margin: 10px 0; background: #f0f8ff; }
+    #timer { font-weight: bold; color: red; }
+    button { padding: 10px 15px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>타이틀: 60갑자로 연도 표현하기</h1>
+  <h2>대상 및 교과: 고2 (한문)</h2>
+
+  <div class="section">
+    <strong>지문:</strong>
+    <p>2024년은 '갑진년'입니다.<br>
+      갑진년에 태어난 아이가 한국 나이로 10살이 되는 해를 60갑자로 무엇이라 표현할 수 있을까요?</p>
+  </div>
+
+  <div class="section">
+    <strong>규칙:</strong>
+    <ul>
+      <li>60갑자는 천간(10개)과 지지(12개)가 순차적으로 결합하여 60년마다 반복됩니다.</li>
+      <li>천간: 갑, 을, 병, 정, 무, 기, 경, 신, 임, 계</li>
+      <li>지지: 자, 축, 인, 묘, 진, 사, 오, 미, 신, 유, 술, 해</li>
+      <li>예: 2024년 → 갑진 / 2025년 → 을사 / 2026년 → 병오 …</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <label>기준 연도:</label>
+    <select id="baseYear">
+      <script>
+        for(let i=1984; i<=2025; i++) {
+          document.write(`<option value="${i}" ${i==2024 ? "selected" : ""}>${i}</option>`);
+        }
+      </script>
+    </select>
+
+    <label>목표 연도:</label>
+    <select id="targetYear">
+      <script>
+        for(let i=1985; i<=2085; i++) {
+          document.write(`<option value="${i}" ${i==2033 ? "selected" : ""}>${i}</option>`);
+        }
+      </script>
+    </select>
+
+    <label>제한 시간:</label>
+    <select id="timeLimit">
+      <option value="30">30초</option>
+      <option value="60">1분</option>
+      <option value="90">1분 30초</option>
+      <option value="120">2분</option>
+    </select>
+
+    <button onclick="startQuiz()">문제 풀기</button>
+  </div>
+
+  <div id="questionBox" class="section" style="display:none;">
+    <p><strong>문제:</strong> 기준연도 <span id="baseText"></span>년부터 <span id="targetText"></span>년까지의 간격을 계산하여, 해당 연도를 60갑자로 맞히세요.</p>
+    <p><strong>남은 시간: <span id="timer"></span></strong></p>
+    <div id="options"></div>
+  </div>
+
+  <div id="popup" style="display:none; background:#fff; border:2px solid black; padding:20px; position:fixed; top:30%; left:30%; width:300px;">
+    <p>⏰ 시간이 종료되었습니다!</p>
+    <button onclick="restart()">다시 도전</button>
+  </div>
+
+  <script>
+    const 천간 = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
+    const 지지 = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
+    const baseStartIndex = 40; // 2024년 == 0번째로 간주
+
+    let timerInterval;
+
+    function getGapja(year) {
+      const index = (year - 1984) % 60;
+      const 천간Index = index % 10;
+      const 지지Index = index % 12;
+      return 천간[천간Index] + 지지[지지Index] + "년";
+    }
+
+    function startQuiz() {
+      const baseYear = parseInt(document.getElementById('baseYear').value);
+      const targetYear = parseInt(document.getElementById('targetYear').value);
+      const timeLimit = parseInt(document.getElementById('timeLimit').value);
+
+      document.getElementById("baseText").innerText = baseYear;
+      document.getElementById("targetText").innerText = targetYear;
+      document.getElementById("questionBox").style.display = 'block';
+
+      const answer = getGapja(targetYear);
+
+      // 보기를 랜덤하게 구성
+      let options = new Set();
+      options.add(answer);
+      while (options.size < 4) {
+        const offset = Math.floor(Math.random() * 60);
+        options.add(getGapja(1984 + offset));
+      }
+      let optionsArray = Array.from(options).sort(() => Math.random() - 0.5);
+
+      let html = "";
+      optionsArray.forEach((opt, idx) => {
+        html += `<button onclick="checkAnswer(this, '${opt}', '${answer}')">${idx+1}) ${opt}</button><br>`;
+      });
+      document.getElementById("options").innerHTML = html;
+
+      // 타이머 시작
+      let timeLeft = timeLimit;
+      document.getElementById("timer").innerText = `${timeLeft}초`;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").innerText = `${timeLeft}초`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          document.getElementById("popup").style.display = 'block';
+        }
+      }, 1000);
+    }
+
+    function checkAnswer(button, selected, correct) {
+      clearInterval(timerInterval);
+      if (selected === correct) {
+        alert("정답입니다! 🎉");
+      } else {
+        alert(`오답입니다. 정답은 ${correct}입니다.`);
+      }
+    }
+
+    function restart() {
+      document.getElementById("popup").style.display = "none";
+      startQuiz();
+    }
+  </script>
+</body>
+</html>

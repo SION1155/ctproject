@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>시인의 고민: 끝소리를 맞춰라!</title>
+    <style>
+        body {
+            font-family: '맑은 고딕', sans-serif;
+            margin: 40px;
+        }
+        h1 {
+            background-color: #0073cf;
+            color: white;
+            padding: 10px;
+        }
+        .section {
+            margin-top: 20px;
+        }
+        .poem-block {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid black;
+            padding: 15px;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+        .line-block {
+            position: relative;
+            margin-bottom: 35px;
+            font-size: 20px;
+        }
+        .rhyme-marker {
+            position: absolute;
+            left: calc(100% - 25px);
+            bottom: -25px;
+            font-size: 18px;
+        }
+        select {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>타이틀: 시인의 고민: 끝소리를 맞춰라!</h1>
+    <h2>대상 및 교과: 고2 (한문1)</h2>
+
+    <div class="section">
+        <strong>지문:</strong>
+        <p>예시를 참고하여 각 구절의 마지막 글자가 압운되는지를 판단해봅시다.</p>
+    </div>
+
+    <div class="section poem-block">
+        <div class="line-block">雨歇長堤草色多<span class="rhyme-marker">◎</span></div>
+        <div class="line-block">送君南浦動悲歌<span class="rhyme-marker">◎</span></div>
+        <div class="line-block">大同江水何時盡<span class="rhyme-marker">○</span></div>
+        <div class="line-block">別淚年年添綠波<span class="rhyme-marker">◎</span></div>
+    </div>
+
+    <div class="section poem-block">
+        <div class="line-block">近來安否問如何
+            <span class="rhyme-marker">
+                <select><option value="○">○</option><option value="◎">◎</option></select>
+            </span>
+        </div>
+        <div class="line-block">月到紗窓妝恨多
+            <span class="rhyme-marker">
+                <select><option value="○">○</option><option value="◎">◎</option></select>
+            </span>
+        </div>
+        <div class="line-block">若使夢魂行有跡
+            <span class="rhyme-marker">
+                <select><option value="○">○</option><option value="◎">◎</option></select>
+            </span>
+        </div>
+        <div class="line-block">門前石路半成沙
+            <span class="rhyme-marker">
+                <select><option value="○">○</option><option value="◎">◎</option></select>
+            </span>
+        </div>
+    </div>
+
+<div style="margin-top: 20px;">
+  <button onclick="checkAnswers()">정답 제출</button>
+</div>
+
+
+<script>
+function checkAnswers() {
+  const correctAnswers = ['◎', '◎', '○', '◎']; // 각 줄의 정답
+  const selects = document.querySelectorAll("select");
+  let feedback = "";
+  let correctCount = 0;
+
+  selects.forEach((sel, idx) => {
+    const selected = sel.value;
+    if (selected === correctAnswers[idx]) {
+      feedback += `${idx + 1}구: 정답입니다.\n`;
+      correctCount++;
+    } else {
+      feedback += `${idx + 1}구: 오답입니다. 정답은 '${correctAnswers[idx]}'입니다.\n`;
+    }
+  });
+
+  alert(`총 ${correctCount}개 정답입니다.\n\n${feedback}`);
+}
+</script>
+
+</body>
+</html>

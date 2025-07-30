@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한자 에어 페인팅 학습</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <style>
+        .canvas-container {
+            position: relative;
+            border: 4px solid #3b82f6;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .drawing-trail {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #3b82f6 0%, #1d4ed8 100%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: trailFade 1.5s ease-out forwards;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+        }
+        @keyframes trailFade {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.3); }
+        }
+        .gesture-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 10;
+        }
+        .writing-area {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px dashed #ffffff;
+            border-radius: 12px;
+        }
+        .popup-button {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 16px 32px;
+            font-weight: 700;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px -2px rgba(0, 0, 0, 0.15);
+            z-index: 20;
+        }
+        .popup-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+        .popup-button.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+        }
+        .clear-btn {
+            left: 50px;
+            background: #ef4444;
+            color: white;
+            border-color: #dc2626;
+        }
+        .complete-btn {
+            right: 50px;
+            background: #10b981;
+            color: white;
+            border-color: #059669;
+        }
+        .finger-point {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #f59e0b;
+            border: 4px solid #ffffff;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.8);
+            animation: fingerPulse 1s infinite;
+            z-index: 15;
+        }
+        .finger-point.drawing {
+            background: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+        }
+        .finger-point.clicking {
+            background: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+            animation: clickPulse 0.3s ease-out;
+        }
+        @keyframes fingerPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+        @keyframes clickPulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.5); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .popup-content {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 95vw;
+            max-height: 95vh;
+        }
+        
+        /* 슬라이드 툴바 */
+        .slide-toolbar {
+            position: absolute;
+            right: -200px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 200px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px 0 0 20px;
+            padding: 20px;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.2);
+            transition: right 0.3s ease;
+            z-index: 25;
+        }
+        .slide-toolbar.active {
+            right: 0;
+        }
+        .slide-trigger {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 50px;
+            height: 100%;
+            z-index: 30;
+        }
+        .tool-section {
+            margin-bottom: 20px;
+        }
+        .tool-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+        .pen-size-option {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin: 5px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .pen-size-option.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .pen-size-preview {
+            background: #374151;
+            border-radius: 50%;
+        }
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .color-option.active {
+            border-color: #374151;
+            transform: scale(1.1);
+        }
+        .color-option::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: inherit;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen">
+    <!-- 학생 정보 입력 화면 -->
+    <div id="studentInfoScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-lg">
+            <div class="text-center mb-10">
+                <div class="text-6xl mb-4">✋</div>
+                <h1 class="text-4xl font-bold text-gray-800 mb-3">한자 에어 페인팅</h1>
+                <p class="text-gray-600 text-lg">손가락으로 허공에 한자를 써보세요</p>
+            </div>
+            <form id="studentForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">이름</label>
+                    <input type="text" id="studentName" required 
+                           class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">학년</label>
+                        <select id="studentGrade" required class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg">
+                            <option value="">선택</option>
+                            <option value="1">1학년</option>
+                            <option value="2">2학년</option>
+                            <option value="3">3학년</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">반</label>
+                        <input type="number" id="studentClass" min="1" max="20" required 
+                               class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">번호</label>
+                    <input type="number" id="studentNumber" min="1" max="40" required 
+                           class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">이메일</label>
+                    <input type="email" id="studentEmail" required 
+                           class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg">
+                </div>
+                <button type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 transform hover:scale-105 text-lg shadow-lg">
+                    🚀 한자쓰기테스트 시작
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 메인 학습 화면 -->
+    <div id="learningScreen" class="hidden min-h-screen">
+        <!-- 헤더 -->
+        <div class="bg-white shadow-xl border-b-4 border-blue-200 p-6">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-6">
+                    <h1 class="text-3xl font-bold text-gray-800">✋ 한자 에어 페인팅</h1>
+                    <div class="text-lg text-gray-600">
+                        <span id="studentInfo"></span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="text-2xl font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-lg">
+                        점수: <span id="currentScore">0</span>/250
+                    </div>
+                    <div class="text-lg text-gray-600 bg-gray-50 px-4 py-2 rounded-lg">
+                        문제: <span id="currentQuestion">1</span>/25
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <div class="max-w-7xl mx-auto p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 문제 정보 패널 -->
+                <div class="bg-white rounded-3xl shadow-xl p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        📚 문제 정보
+                    </h2>
+                    <div class="space-y-6">
+                        <div class="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl">
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">뜻</label>
+                            <div id="characterMeaning" class="text-3xl font-bold text-blue-600"></div>
+                        </div>
+                        <div class="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl">
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">음</label>
+                            <div id="characterSound" class="text-3xl font-bold text-green-600"></div>
+                        </div>
+                        <div class="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">정답 한자</label>
+                            <div class="bg-white p-4 rounded-xl border-2 border-gray-200">
+                                <img id="answerImage" src="" alt="정답 한자" class="w-32 h-32 mx-auto object-contain">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 그리기 시작 버튼 영역 -->
+                <div class="lg:col-span-2 bg-white rounded-3xl shadow-xl p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        ✋ 한자 쓰기
+                    </h2>
+                    <div class="text-center">
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-12 mb-6">
+                            <div class="text-8xl mb-6">🎨</div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-4">허공에 한자를 써보세요</h3>
+                            <p class="text-gray-600 mb-8">팝업 창에서 손가락으로 한자를 그려주세요</p>
+                        </div>
+                        <button id="openDrawingBtn" 
+                                class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-8 rounded-xl transition duration-300 transform hover:scale-105 text-xl shadow-lg">
+                            🖌️ 그리기 시작
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 결과 및 제어 패널 -->
+            <div class="mt-6 bg-white rounded-3xl shadow-xl p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            📊 결과
+                        </h2>
+                        <div id="resultPanel" class="space-y-4">
+                            <div class="text-center text-gray-500 p-8 bg-gray-50 rounded-2xl">
+                                허공에 한자를 써주세요
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            🎮 제어
+                        </h2>
+                        <div class="space-y-4">
+                            <button id="nextBtn" disabled class="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 disabled:from-gray-300 disabled:to-gray-300 text-white py-4 px-6 rounded-xl transition font-semibold text-lg">
+                                ➡️ 다음 문제
+                            </button>
+                            <button id="endLearningBtn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-4 px-6 rounded-xl transition font-semibold text-lg">
+                                🏁 학습 종료
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 그리기 팝업 -->
+    <div id="drawingPopup" class="hidden popup-overlay">
+        <div class="popup-content">
+            <div class="canvas-container">
+                <video id="videoElement" width="800" height="600" autoplay muted class="rounded-2xl opacity-60" style="transform: scaleX(-1);"></video>
+                <canvas id="drawingCanvas" width="800" height="600" class="absolute top-0 left-0 rounded-2xl writing-area"></canvas>
+                <div id="gestureIndicator" class="gesture-indicator">손을 카메라에 보여주세요</div>
+                <div id="fingerPoint" class="finger-point hidden"></div>
+                
+                <!-- 슬라이드 툴바 -->
+                <div id="slideToolbar" class="slide-toolbar">
+                    <div class="tool-section">
+                        <div class="tool-title">펜 굵기</div>
+                        <div>
+                            <div class="pen-size-option active" data-size="4">
+                                <div class="pen-size-preview" style="width: 4px; height: 4px;"></div>
+                            </div>
+                            <div class="pen-size-option" data-size="8">
+                                <div class="pen-size-preview" style="width: 8px; height: 8px;"></div>
+                            </div>
+                            <div class="pen-size-option" data-size="12">
+                                <div class="pen-size-preview" style="width: 12px; height: 12px;"></div>
+                            </div>
+                            <div class="pen-size-option" data-size="16">
+                                <div class="pen-size-preview" style="width: 16px; height: 16px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-section">
+                        <div class="tool-title">펜 색상</div>
+                        <div>
+                            <div class="color-option active" data-color="#3b82f6" style="background: #3b82f6;"></div>
+                            <div class="color-option" data-color="#ef4444" style="background: #ef4444;"></div>
+                            <div class="color-option" data-color="#10b981" style="background: #10b981;"></div>
+                            <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;"></div>
+                            <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
+                            <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;"></div>
+                            <div class="color-option" data-color="#84cc16" style="background: #84cc16;"></div>
+                            <div class="color-option" data-color="#374151" style="background: #374151;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 슬라이드 트리거 영역 -->
+                <div class="slide-trigger"></div>
+                
+                <!-- 팝업 내 버튼들 -->
+                <button id="clearBtnPopup" class="popup-button clear-btn">
+                    🗑️ 지우기
+                </button>
+                <button id="completeBtnPopup" class="popup-button complete-btn">
+                    ✅ 완료
+                </button>
+            </div>
+            
+            <!-- 제스처 안내 -->
+            <div class="mt-6 bg-blue-50 border-2 border-blue-200 rounded-2xl p-4">
+                <h3 class="font-semibold text-blue-800 mb-2">✋ 제스처 사용법</h3>
+                <div class="text-sm text-blue-700 space-y-1">
+                    <p>• <strong>검지손가락만</strong> 펴서 허공에 한자를 써주세요</p>
+                    <p>• <strong>검지+중지를 붙여서</strong> 펴면 버튼을 클릭할 수 있습니다</p>
+                    <p>• <strong>오른쪽 가장자리</strong>로 손을 가져가면 도구 메뉴가 나타납니다</p>
+                    <p>• <strong>주먹을 쥐면</strong> 그리기가 멈춥니다</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 학습 종료 모달 -->
+    <div id="endModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-lg">
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4">🎉</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">학습 완료!</h2>
+            </div>
+            <div class="mb-8 text-center">
+                <p class="text-gray-600 mb-3 text-lg">최종 점수: <span id="finalScore" class="font-bold text-blue-600 text-2xl"></span>/250</p>
+                <p class="text-gray-600 text-lg">정답률: <span id="accuracy" class="font-bold text-green-600 text-2xl"></span>%</p>
+            </div>
+            <div class="mb-8">
+                <label class="block text-sm font-semibold text-gray-700 mb-3">결과 전송 이메일</label>
+                <input type="email" id="resultEmail" 
+                       class="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg">
+            </div>
+            <div class="flex space-x-4">
+                <button id="sendResultBtn" class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-6 rounded-xl font-semibold transition">
+                    📧 결과 전송
+                </button>
+                <button id="closeModalBtn" class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white py-4 px-6 rounded-xl font-semibold transition">
+                    ❌ 닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let video, canvas, ctx;
+        let hands, camera;
+        let isDrawing = false;
+        let lastPoint = null;
+        let drawingPoints = [];
+        let currentQuestionIndex = 0;
+        let totalScore = 0;
+        let answerData = null;
+        let studentData = {};
+        let scores = [];
+        let fingerPoint = null;
+        let gestureIndicator = null;
+        let isPopupOpen = false;
+        let lastClickTime = 0;
+        
+        // 펜 설정
+        let currentPenSize = 4;
+        let currentPenColor = '#3b82f6';
+        let slideToolbar = null;
+
+        // 샘플 답안 데이터
+        const sampleAnswerData = {
+            filename: Array.from({length: 25}, (_, i) => String(i + 1).padStart(2, '0') + '.png'),
+            meaning: ['학교', '공부', '선생님', '학생', '책', '연필', '지우개', '칠판', '교실', '숙제', 
+                     '시험', '점수', '합격', '불합격', '졸업', '입학', '방학', '개학', '수업', '과목',
+                     '국어', '수학', '영어', '과학', '사회'],
+            sound: ['학', '공', '선', '생', '책', '연', '지', '칠', '교', '숙',
+                   '시', '점', '합', '불', '졸', '입', '방', '개', '수', '과',
+                   '국', '수', '영', '과', '사']
+        };
+
+        // 초기화
+        async function init() {
+            answerData = sampleAnswerData;
+            setupEventListeners();
+        }
+
+        // 카메라 초기화
+        async function initCamera() {
+            if (video && video.srcObject) return;
+
+            video = document.getElementById('videoElement');
+            canvas = document.getElementById('drawingCanvas');
+            ctx = canvas.getContext('2d');
+            fingerPoint = document.getElementById('fingerPoint');
+            gestureIndicator = document.getElementById('gestureIndicator');
+            slideToolbar = document.getElementById('slideToolbar');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: 800, 
+                        height: 600,
+                        facingMode: 'user'
+                    } 
+                });
+                video.srcObject = stream;
+                
+                return new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        resolve();
+                    };
+                });
+            } catch (err) {
+                console.error('카메라 접근 오류:', err);
+                alert('카메라에 접근할 수 없습니다. 브라우저 설정을 확인해주세요.');
+            }
+        }
+
+        // MediaPipe 초기화
+        async function initMediaPipe() {
+            if (hands) return;
+
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandResults);
+
+            camera = new Camera(video, {
+                onFrame: async () => {
+                    await hands.send({image: video});
+                },
+                width: 800,
+                height: 600
+            });
+
+            camera.start();
+        }
+
+        // 손 감지 결과 처리
+        function onHandResults(results) {
+            if (!isPopupOpen) return;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // 손가락 끝 좌표들
+                const indexTip = landmarks[8];
+                const middleTip = landmarks[12];
+                const indexPip = landmarks[6];
+                const middlePip = landmarks[10];
+                const indexMcp = landmarks[5];
+                const thumbTip = landmarks[4];
+                const ringTip = landmarks[16];
+                const pinkyTip = landmarks[20];
+                
+                // 캔버스 좌표로 변환 (좌우 반전)
+                const x = (1 - indexTip.x) * canvas.width;
+                const y = indexTip.y * canvas.height;
+                
+                // 손가락 포인터 표시
+                fingerPoint.style.left = x + 'px';
+                fingerPoint.style.top = y + 'px';
+                fingerPoint.classList.remove('hidden');
+                
+                // 손가락 상태 확인
+                const isIndexExtended = indexTip.y < indexPip.y && indexPip.y < indexMcp.y;
+                const isMiddleExtended = middleTip.y < middlePip.y;
+                const isThumbExtended = thumbTip.x > indexMcp.x;
+                const isRingFolded = ringTip.y > landmarks[13].y;
+                const isPinkyFolded = pinkyTip.y > landmarks[17].y;
+                
+                // 검지와 중지가 붙어있는지 확인
+                const fingerDistance = Math.sqrt(
+                    Math.pow((indexTip.x - middleTip.x) * canvas.width, 2) + 
+                    Math.pow((indexTip.y - middleTip.y) * canvas.height, 2)
+                );
+                const fingersClose = fingerDistance < 30;
+                
+                // 슬라이드 툴바 제어 (오른쪽 가장자리 50px)
+                if (x > canvas.width - 50) {
+                    slideToolbar.classList.add('active');
+                } else if (x < canvas.width - 200) {
+                    slideToolbar.classList.remove('active');
+                }
+                
+                // 제스처 인식
+                if (isIndexExtended && isMiddleExtended && fingersClose && isRingFolded && isPinkyFolded) {
+                    // 검지+중지 붙여서 펴기 = 클릭 모드
+                    gestureIndicator.textContent = '클릭 모드 👆';
+                    gestureIndicator.style.background = 'rgba(239, 68, 68, 0.8)';
+                    fingerPoint.className = 'finger-point clicking';
+                    
+                    stopDrawing();
+                    checkButtonClick(x, y);
+                    checkToolbarClick(x, y);
+                    
+                } else if (isIndexExtended && !isMiddleExtended && isRingFolded && isPinkyFolded) {
+                    // 검지만 펴기 = 그리기 모드
+                    gestureIndicator.textContent = '그리기 모드 ✏️';
+                    gestureIndicator.style.background = 'rgba(34, 197, 94, 0.8)';
+                    fingerPoint.className = 'finger-point drawing';
+                    
+                    if (isInDrawingArea(x, y)) {
+                        addDrawingPoint(x, y);
+                    }
+                } else {
+                    // 기타 = 정지 모드
+                    gestureIndicator.textContent = '정지 모드 ✋';
+                    gestureIndicator.style.background = 'rgba(59, 130, 246, 0.8)';
+                    fingerPoint.className = 'finger-point';
+                    stopDrawing();
+                }
+                
+            } else {
+                fingerPoint.classList.add('hidden');
+                gestureIndicator.textContent = '손을 카메라에 보여주세요';
+                gestureIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
+                slideToolbar.classList.remove('active');
+                stopDrawing();
+            }
+        }
+
+        // 그리기 영역 확인
+        function isInDrawingArea(x, y) {
+            const margin = 50;
+            return x > margin && x < canvas.width - 250 && // 오른쪽 툴바 영역 제외
+                   y > margin && y < canvas.height - 150;
+        }
+
+        // 버튼 클릭 확인
+        function checkButtonClick(x, y) {
+            const currentTime = Date.now();
+            if (currentTime - lastClickTime < 500) return;
+            
+            const clearBtnArea = { x: 50, y: canvas.height - 100, width: 180, height: 60 };
+            const completeBtnArea = { x: canvas.width - 230, y: canvas.height - 100, width: 180, height: 60 };
+            
+            if (isPointInArea(x, y, clearBtnArea)) {
+                lastClickTime = currentTime;
+                document.getElementById('clearBtnPopup').classList.add('active');
+                setTimeout(() => {
+                    document.getElementById('clearBtnPopup').classList.remove('active');
+                    clearDrawing();
+                }, 200);
+            } else if (isPointInArea(x, y, completeBtnArea)) {
+                lastClickTime = currentTime;
+                document.getElementById('completeBtnPopup').classList.add('active');
+                setTimeout(() => {
+                    document.getElementById('completeBtnPopup').classList.remove('active');
+                    completeDrawing();
+                }, 200);
+            }
+        }
+
+        // 툴바 클릭 확인
+        function checkToolbarClick(x, y) {
+            if (!slideToolbar.classList.contains('active')) return;
+            
+            const currentTime = Date.now();
+            if (currentTime - lastClickTime < 300) return;
+            
+            // 펜 크기 선택
+            document.querySelectorAll('.pen-size-option').forEach(option => {
+                const rect = option.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                const optionX = rect.left - canvasRect.left;
+                const optionY = rect.top - canvasRect.top;
+                const optionArea = {
+                    x: optionX, y: optionY,
+                    width: rect.width, height: rect.height
+                };
+                
+                if (isPointInArea(x, y, optionArea)) {
+                    lastClickTime = currentTime;
+                    document.querySelectorAll('.pen-size-option').forEach(o => o.classList.remove('active'));
+                    option.classList.add('active');
+                    currentPenSize = parseInt(option.dataset.size);
+                }
+            });
+            
+            // 펜 색상 선택
+            document.querySelectorAll('.color-option').forEach(option => {
+                const rect = option.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                const optionX = rect.left - canvasRect.left;
+                const optionY = rect.top - canvasRect.top;
+                const optionArea = {
+                    x: optionX, y: optionY,
+                    width: rect.width, height: rect.height
+                };
+                
+                if (isPointInArea(x, y, optionArea)) {
+                    lastClickTime = currentTime;
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+                    option.classList.add('active');
+                    currentPenColor = option.dataset.color;
+                }
+            });
+        }
+
+        // 포인트가 영역 안에 있는지 확인
+        function isPointInArea(x, y, area) {
+            return x >= area.x && x <= area.x + area.width && 
+                   y >= area.y && y <= area.y + area.height;
+        }
+
+        // 그리기 포인트 추가
+        function addDrawingPoint(x, y) {
+            if (lastPoint) {
+                const distance = Math.sqrt(
+                    Math.pow(x - lastPoint.x, 2) + Math.pow(y - lastPoint.y, 2)
+                );
+                
+                if (distance > 5) {
+                    ctx.strokeStyle = currentPenColor;
+                    ctx.lineWidth = currentPenSize;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    
+                    // 시각적 효과 추가
+                    const trail = document.createElement('div');
+                    trail.className = 'drawing-trail';
+                    trail.style.left = (x - 6) + 'px';
+                    trail.style.top = (y - 6) + 'px';
+                    trail.style.background = `radial-gradient(circle, ${currentPenColor} 0%, ${currentPenColor}80 100%)`;
+                    canvas.parentElement.appendChild(trail);
+                    
+                    setTimeout(() => trail.remove(), 1500);
+                }
+            }
+            
+            drawingPoints.push({ x, y, timestamp: Date.now() });
+            lastPoint = { x, y };
+        }
+
+        // 그리기 중지
+        function stopDrawing() {
+            lastPoint = null;
+        }
+
+        // 팝업 열기
+        async function openDrawingPopup() {
+            document.getElementById('drawingPopup').classList.remove('hidden');
+            isPopupOpen = true;
+            
+            await initCamera();
+            await initMediaPipe();
+            
+            clearDrawing();
+        }
+
+        // 팝업 닫기
+        function closeDrawingPopup() {
+            document.getElementById('drawingPopup').classList.add('hidden');
+            isPopupOpen = false;
+            
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            slideToolbar.classList.remove('active');
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            document.getElementById('studentForm').addEventListener('submit', startLearning);
+            document.getElementById('openDrawingBtn').addEventListener('click', openDrawingPopup);
+            document.getElementById('clearBtnPopup').addEventListener('click', clearDrawing);
+            document.getElementById('completeBtnPopup').addEventListener('click', completeDrawing);
+            document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+            document.getElementById('endLearningBtn').addEventListener('click', endLearning);
+            document.getElementById('sendResultBtn').addEventListener('click', sendResult);
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+            
+            // 팝업 외부 클릭 시 닫기
+            document.getElementById('drawingPopup').addEventListener('click', (e) => {
+                if (e.target.id === 'drawingPopup') {
+                    closeDrawingPopup();
+                }
+            });
+            
+            // ESC 키로 팝업 닫기
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isPopupOpen) {
+                    closeDrawingPopup();
+                }
+            });
+            
+            // 펜 크기 선택 이벤트
+            document.querySelectorAll('.pen-size-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.pen-size-option').forEach(o => o.classList.remove('active'));
+                    option.classList.add('active');
+                    currentPenSize = parseInt(option.dataset.size);
+                });
+            });
+            
+            // 펜 색상 선택 이벤트
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+                    option.classList.add('active');
+                    currentPenColor = option.dataset.color;
+                });
+            });
+        }
+
+        // 학습 시작
+        function startLearning(e) {
+            e.preventDefault();
+            
+            studentData = {
+                name: document.getElementById('studentName').value,
+                grade: document.getElementById('studentGrade').value,
+                class: document.getElementById('studentClass').value,
+                number: document.getElementById('studentNumber').value,
+                email: document.getElementById('studentEmail').value
+            };
+            
+            document.getElementById('studentInfoScreen').classList.add('hidden');
+            document.getElementById('learningScreen').classList.remove('hidden');
+            
+            document.getElementById('studentInfo').textContent = 
+                `${studentData.grade}학년 ${studentData.class}반 ${studentData.number}번 ${studentData.name}`;
+            
+            loadQuestion();
+        }
+
+        // 문제 로드
+        function loadQuestion() {
+            if (currentQuestionIndex >= answerData.filename.length) {
+                endLearning();
+                return;
+            }
+            
+            document.getElementById('characterMeaning').textContent = answerData.meaning[currentQuestionIndex];
+            document.getElementById('characterSound').textContent = answerData.sound[currentQuestionIndex];
+            document.getElementById('answerImage').src = `images/${answerData.filename[currentQuestionIndex]}`;
+            document.getElementById('currentQuestion').textContent = currentQuestionIndex + 1;
+            
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('resultPanel').innerHTML = '<div class="text-center text-gray-500 p-8 bg-gray-50 rounded-2xl">허공에 한자를 써주세요</div>';
+        }
+
+        // 그리기 지우기
+        function clearDrawing() {
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            drawingPoints = [];
+            lastPoint = null;
+        }
+
+        // 그리기 완료
+        function completeDrawing() {
+            if (drawingPoints.length === 0) {
+                alert('한자를 써주세요!');
+                return;
+            }
+            
+            const score = evaluateDrawing();
+            scores.push(score);
+            totalScore += score;
+            
+            document.getElementById('currentScore').textContent = totalScore;
+            
+            const resultPanel = document.getElementById('resultPanel');
+            const isCorrect = score > 5;
+            
+            resultPanel.innerHTML = `
+                <div class="text-center p-6 rounded-2xl ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
+                    <div class="text-6xl mb-4">${isCorrect ? '🎉' : '😔'}</div>
+                    <div class="text-2xl font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'} mb-2">
+                        ${isCorrect ? '정답!' : '오답'}
+                    </div>
+                    <div class="text-xl text-gray-600">점수: ${score}/10</div>
+                </div>
+            `;
+            
+            document.getElementById('nextBtn').disabled = false;
+            saveToCsv(score);
+            closeDrawingPopup();
+        }
+
+        // 간단한 채점 함수
+        function evaluateDrawing() {
+            const strokeCount = Math.floor(drawingPoints.length / 15);
+            const complexity = calculateComplexity();
+            const baseScore = Math.min(strokeCount, 7);
+            const complexityBonus = Math.min(complexity, 3);
+            return Math.min(baseScore + complexityBonus, 10);
+        }
+
+        // 복잡도 계산
+        function calculateComplexity() {
+            if (drawingPoints.length < 10) return 0;
+            
+            let directionChanges = 0;
+            for (let i = 2; i < drawingPoints.length; i++) {
+                const prev = drawingPoints[i-2];
+                const curr = drawingPoints[i-1];
+                const next = drawingPoints[i];
+                
+                const angle1 = Math.atan2(curr.y - prev.y, curr.x - prev.x);
+                const angle2 = Math.atan2(next.y - curr.y, next.x - curr.x);
+                const angleDiff = Math.abs(angle2 - angle1);
+                
+                if (angleDiff > Math.PI / 4) {
+                    directionChanges++;
+                }
+            }
+            
+            return Math.min(Math.floor(directionChanges / 3), 3);
+        }
+
+        // CSV 저장
+        function saveToCsv(score) {
+            const csvData = `${studentData.name},${studentData.grade},${studentData.class},${studentData.number},${studentData.email},${currentQuestionIndex + 1},${score},${new Date().toISOString()}\n`;
+            localStorage.setItem('myscore_' + Date.now(), csvData);
+        }
+
+        // 다음 문제
+        function nextQuestion() {
+            currentQuestionIndex++;
+            loadQuestion();
+        }
+
+        // 학습 종료
+        function endLearning() {
+            const accuracy = Math.round((scores.filter(s => s > 5).length / Math.max(scores.length, 1)) * 100);
+            
+            document.getElementById('finalScore').textContent = totalScore;
+            document.getElementById('accuracy').textContent = accuracy;
+            document.getElementById('resultEmail').value = studentData.email;
+            document.getElementById('endModal').classList.remove('hidden');
+        }
+
+        // 결과 전송
+        function sendResult() {
+            const email = document.getElementById('resultEmail').value;
+            if (!email) {
+                alert('이메일을 입력해주세요!');
+                return;
+            }
+            
+            const resultData = {
+                student: studentData,
+                totalScore: totalScore,
+                accuracy: Math.round((scores.filter(s => s > 5).length / Math.max(scores.length, 1)) * 100),
+                scores: scores,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('결과 전송:', resultData);
+            alert(`학습 결과가 ${email}로 전송되었습니다!`);
+            closeModal();
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('endModal').classList.add('hidden');
+            location.reload();
+        }
+
+        // 페이지 로드 완료 후 초기화
+        window.addEventListener('load', () => {
+            init().catch(console.error);
+        });
+    </script>
+</body>
+</html>
