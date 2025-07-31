@@ -44,7 +44,7 @@ with col1:
         htmlviewer.html(html2, height=1000)
     with st.expander('Content #AIX...'):
         #st.write(html, unsafe_allow_html=True)
-        htmlviewer.html(html3, height=2500)
+        htmlviewer.html(html3, height=1100)
 with col2:
     with st.expander('Tips..'):
         st.info('Tips..')

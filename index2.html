@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -14,31 +13,27 @@
             color: white;
             padding: 10px;
         }
-        .section {
-            margin-top: 20px;
-        }
-        .poem-block {
-            display: flex;
-            flex-direction: column;
-            border: 1px solid black;
-            padding: 15px;
-            margin-bottom: 20px;
-            width: fit-content;
-        }
-        .line-block {
-            position: relative;
-            margin-bottom: 35px;
-            font-size: 20px;
-        }
-        .rhyme-marker {
-            position: absolute;
-            left: calc(100% - 25px);
-            bottom: -25px;
+        h2 { margin: 18px 0 10px 0; font-size: 1.1em; color: #444; }
+        .section { margin-top: 20px; }
+        .poem-table { border-collapse: collapse; margin: 18px 0; }
+        .poem-table th, .poem-table td {
+            border: 1px solid #aaa;
+            padding: 8px 14px;
+            text-align: center;
             font-size: 18px;
         }
-        select {
-            font-size: 14px;
+        .example-title { color: #0073cf; font-weight: bold; }
+        .select-cell select, .select-cell option {
+            font-size: 20px !important;
+            font-family: '맑은 고딕', 'Malgun Gothic', Arial, sans-serif !important;
         }
+        button { padding: 8px 22px; font-size: 16px; }
+        #timer { font-weight: bold; color: red; margin-left: 10px; }
+        #popup { display:none; background:#fff; border:2px solid black; padding:20px; position:fixed; top:30%; left:50%; transform:translateX(-50%); width:300px; z-index:20; text-align:center; }
+        #popup button { margin-top: 16px; }
+        .ctrls { margin:20px 0 18px 0; }
+        #result { margin-top: 18px; font-size: 1.1em; font-weight: bold; }
+        #questionBox { border: 2px solid #0073cf; background: #f0f8ff; padding: 22px; margin-top: 25px; }
     </style>
 </head>
 <body>
@@ -47,64 +42,150 @@
 
     <div class="section">
         <strong>지문:</strong>
-        <p>예시를 참고하여 각 구절의 마지막 글자가 압운되는지를 판단해봅시다.</p>
+        <p>예시를 참고하여 각 구절의 끝소리가 압운되는지를 <b>선택</b>해 보세요.</p>
     </div>
 
-    <div class="section poem-block">
-        <div class="line-block">雨歇長堤草色多<span class="rhyme-marker">◎</span></div>
-        <div class="line-block">送君南浦動悲歌<span class="rhyme-marker">◎</span></div>
-        <div class="line-block">大同江水何時盡<span class="rhyme-marker">○</span></div>
-        <div class="line-block">別淚年年添綠波<span class="rhyme-marker">◎</span></div>
+    <div class="section">
+      <div class="example-title">[예시]</div>
+      <table class="poem-table">
+        <tr><th>구절</th><th>끝소리(압운)</th></tr>
+        <tr><td>雨歇長堤草色多</td><td>◎</td></tr>
+        <tr><td>送君南浦動悲歌</td><td>◎</td></tr>
+        <tr><td>大同江水何時盡</td><td>○</td></tr>
+        <tr><td>別淚年年添綠波</td><td>◎</td></tr>
+      </table>
     </div>
 
-    <div class="section poem-block">
-        <div class="line-block">近來安否問如何
-            <span class="rhyme-marker">
-                <select><option value="○">○</option><option value="◎">◎</option></select>
-            </span>
-        </div>
-        <div class="line-block">月到紗窓妝恨多
-            <span class="rhyme-marker">
-                <select><option value="○">○</option><option value="◎">◎</option></select>
-            </span>
-        </div>
-        <div class="line-block">若使夢魂行有跡
-            <span class="rhyme-marker">
-                <select><option value="○">○</option><option value="◎">◎</option></select>
-            </span>
-        </div>
-        <div class="line-block">門前石路半成沙
-            <span class="rhyme-marker">
-                <select><option value="○">○</option><option value="◎">◎</option></select>
-            </span>
-        </div>
+    <div class="ctrls">
+      <label>제한 시간:</label>
+      <select id="timeLimit">
+        <option value="30">30초</option>
+        <option value="60">1분</option>
+        <option value="90">1분 30초</option>
+        <option value="120">2분</option>
+      </select>
+      <button type="button" onclick="showQuiz()" style="margin-left:10px;">문제 풀기</button>
     </div>
 
-<div style="margin-top: 20px;">
-  <button onclick="checkAnswers()">정답 제출</button>
-</div>
+    <div id="questionBox" class="section" style="display:none;">
+      <div class="example-title">[문제]</div>
+      <form id="quizForm" onsubmit="return false;">
+        <table class="poem-table">
+          <tr><th>구절</th><th>끝소리(압운)</th></tr>
+          <tr>
+            <td>近來安否問如何</td>
+            <td class="select-cell">
+              <select>
+                <option value="">선택</option>
+                <option value="○">○</option>
+                <option value="◎">◎</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>月到紗窓妝恨多</td>
+            <td class="select-cell">
+              <select>
+                <option value="">선택</option>
+                <option value="○">○</option>
+                <option value="◎">◎</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>若使夢魂行有跡</td>
+            <td class="select-cell">
+              <select>
+                <option value="">선택</option>
+                <option value="○">○</option>
+                <option value="◎">◎</option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td>門前石路半成沙</td>
+            <td class="select-cell">
+              <select>
+                <option value="">선택</option>
+                <option value="○">○</option>
+                <option value="◎">◎</option>
+              </select>
+            </td>
+          </tr>
+        </table>
+        <div style="margin-top: 20px;">
+          <button type="button" onclick="checkAnswers()">정답 제출</button>
+          <span id="timer"></span>
+        </div>
+        <div id="result"></div>
+      </form>
+    </div>
 
+    <div id="popup">
+      <p>⏰ 시간이 종료되었습니다!</p>
+      <button onclick="restart()">다시 도전</button>
+    </div>
 
 <script>
+let timerInterval;
+
+function showQuiz() {
+  document.getElementById('questionBox').style.display = 'block';
+  document.getElementById('result').innerText = '';
+  document.getElementById('popup').style.display = 'none';
+
+  // 타이머
+  const timeLimit = parseInt(document.getElementById('timeLimit').value);
+  let timeLeft = timeLimit;
+  document.getElementById('timer').innerText = ` (남은 시간: ${timeLeft}초)`;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById('timer').innerText = ` (남은 시간: ${timeLeft}초)`;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById('popup').style.display = 'block';
+      document.getElementById('timer').innerText = '';
+    }
+  }, 1000);
+}
+
 function checkAnswers() {
-  const correctAnswers = ['◎', '◎', '○', '◎']; // 각 줄의 정답
-  const selects = document.querySelectorAll("select");
+  clearInterval(timerInterval);
+  const correctAnswers = ['◎', '◎', '○', '◎'];
+  const selects = document.querySelectorAll(".select-cell select");
   let feedback = "";
   let correctCount = 0;
+  let emptyCount = 0;
 
   selects.forEach((sel, idx) => {
     const selected = sel.value;
-    if (selected === correctAnswers[idx]) {
-      feedback += `${idx + 1}구: 정답입니다.\n`;
-      correctCount++;
+    if (!selected) emptyCount++;
+    else if (selected === correctAnswers[idx]) correctCount++;
+  });
+
+  if (emptyCount > 0) {
+    document.getElementById('result').innerHTML = "<span style='color:#b00;'>모든 항목을 선택해 주세요!</span>";
+    return false;
+  }
+
+  selects.forEach((sel, idx) => {
+    if (sel.value === correctAnswers[idx]) {
+      feedback += `${idx + 1}구: <span style="color:#0073cf;">정답입니다.</span><br>`;
     } else {
-      feedback += `${idx + 1}구: 오답입니다. 정답은 '${correctAnswers[idx]}'입니다.\n`;
+      feedback += `${idx + 1}구: <span style="color:#b00;">오답입니다. 정답은 '${correctAnswers[idx]}'입니다.</span><br>`;
     }
   });
 
-  alert(`총 ${correctCount}개 정답입니다.\n\n${feedback}`);
+  document.getElementById('result').innerHTML =
+    `총 <b>${correctCount}</b>개 정답입니다.<br><br>${feedback}`;
+  return false;
+}
+
+function restart() {
+  document.getElementById('popup').style.display = 'none';
+  showQuiz();
 }
 </script>
-
 </body>
 </html>

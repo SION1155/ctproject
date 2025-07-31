@@ -1,57 +1,71 @@
-<html>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>60갑자로 연도 표현하기</title>
+  <title>간지(干支)로 연도 표현하기</title>
   <style>
     body { font-family: sans-serif; margin: 40px; }
     h1 { background: #0073cf; color: white; padding: 10px; }
+    h2 { margin: 18px 0 10px 0; font-size: 1.1em; color: #444; }
     .section { margin-top: 20px; }
-    #questionBox { border: 2px solid #0073cf; padding: 20px; margin: 10px 0; background: #f0f8ff; }
-    #timer { font-weight: bold; color: red; }
-    button { padding: 10px 15px; margin: 5px; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #aaa; padding: 6px 14px; text-align: center; }
+    #result { margin-top: 18px; font-size: 1.1em; font-weight: bold; }
+    #questionBox { border: 2px solid #0073cf; background: #f0f8ff; padding: 22px; margin-top: 25px; }
+    #timer { font-weight: bold; color: red; margin-left: 10px; }
+    #popup { display:none; background:#fff; border:2px solid black; padding:20px; position:fixed; top:30%; left:50%; transform:translateX(-50%); width:300px; z-index:20; text-align:center; }
+    #popup button { margin-top: 16px; }
+    .ctrls { margin:20px 0 18px 0; }
+    input[type="text"] { width: 80px; padding: 6px; margin-right: 10px; }
+    button { padding: 8px 18px; }
+    .caption { font-weight:bold; margin-bottom:6px; }
   </style>
 </head>
 <body>
-  <h1>타이틀: 60갑자로 연도 표현하기</h1>
+  <h1>타이틀: 간지(干支)로 연도 표현하기</h1>
   <h2>대상 및 교과: 고2 (한문)</h2>
 
   <div class="section">
-    <strong>지문:</strong>
-    <p>2024년은 '갑진년'입니다.<br>
-      갑진년에 태어난 아이가 한국 나이로 10살이 되는 해를 60갑자로 무엇이라 표현할 수 있을까요?</p>
+    <b>지문:</b>
+    <div>
+      카피바라는 달력을 보다가 문득 궁금해졌습니다.<br>
+      “우리나라는 옛날부터 해마다 이름이 달라진다던데, 2024년은 ‘갑진년’이래.<br>
+      그런데 몇 년 뒤에는 무슨 간지가 붙을까?”
+    </div>
+    <div style="margin-top:18px;">
+      <div class="caption">예시 연도-간지 표</div>
+      <table>
+        <tr>
+          <th>2020</th>
+          <th>2021</th>
+          <th>2022</th>
+          <th>2023</th>
+          <th>2024</th>
+          <th>2025</th>
+          <th>2026</th>
+          <th>2027</th>
+          <th>2028</th>
+          <th>2029</th>
+          <th>2030</th>
+        </tr>
+        <tr>
+          <td>경자</td>
+          <td>신축</td>
+          <td>임인</td>
+          <td>계묘</td>
+          <td>갑진</td>
+          <td>을사</td>
+          <td>병오</td>
+          <td>정미</td>
+          <td>무신</td>
+          <td>기유</td>
+          <td>경술</td>
+        </tr>
+      </table>
+    </div>
   </div>
 
-  <div class="section">
-    <strong>규칙:</strong>
-    <ul>
-      <li>60갑자는 천간(10개)과 지지(12개)가 순차적으로 결합하여 60년마다 반복됩니다.</li>
-      <li>천간: 갑, 을, 병, 정, 무, 기, 경, 신, 임, 계</li>
-      <li>지지: 자, 축, 인, 묘, 진, 사, 오, 미, 신, 유, 술, 해</li>
-      <li>예: 2024년 → 갑진 / 2025년 → 을사 / 2026년 → 병오 …</li>
-    </ul>
-  </div>
-
-  <div class="section">
-    <label>기준 연도:</label>
-    <select id="baseYear">
-      <script>
-        for(let i=1984; i<=2025; i++) {
-          document.write(`<option value="${i}" ${i==2024 ? "selected" : ""}>${i}</option>`);
-        }
-      </script>
-    </select>
-
-    <label>목표 연도:</label>
-    <select id="targetYear">
-      <script>
-        for(let i=1985; i<=2085; i++) {
-          document.write(`<option value="${i}" ${i==2033 ? "selected" : ""}>${i}</option>`);
-        }
-      </script>
-    </select>
-
+  <div class="ctrls">
     <label>제한 시간:</label>
     <select id="timeLimit">
       <option value="30">30초</option>
@@ -59,17 +73,20 @@
       <option value="90">1분 30초</option>
       <option value="120">2분</option>
     </select>
-
-    <button onclick="startQuiz()">문제 풀기</button>
+    <button onclick="startQuiz()" style="margin-left:10px;">문제 풀기</button>
   </div>
 
   <div id="questionBox" class="section" style="display:none;">
-    <p><strong>문제:</strong> 기준연도 <span id="baseText"></span>년부터 <span id="targetText"></span>년까지의 간격을 계산하여, 해당 연도를 60갑자로 맞히세요.</p>
-    <p><strong>남은 시간: <span id="timer"></span></strong></p>
-    <div id="options"></div>
+    <p id="questionText"></p>
+    <div style="margin-top:12px;">
+      <label>정답 입력: <input type="text" id="userAnswer" maxlength="2" placeholder="예: 경자"></label>
+      <button onclick="checkAnswer()">정답 제출</button>
+      <span id="timer"></span>
+      <span id="result"></span>
+    </div>
   </div>
 
-  <div id="popup" style="display:none; background:#fff; border:2px solid black; padding:20px; position:fixed; top:30%; left:30%; width:300px;">
+  <div id="popup">
     <p>⏰ 시간이 종료되었습니다!</p>
     <button onclick="restart()">다시 도전</button>
   </div>
@@ -77,68 +94,71 @@
   <script>
     const 천간 = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
     const 지지 = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
-    const baseStartIndex = 40; // 2024년 == 0번째로 간주
-
-    let timerInterval;
+    const 예시연도 = [2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030];
+    let timerInterval, answerYear, correctAnswer;
 
     function getGapja(year) {
-      const index = (year - 1984) % 60;
-      const 천간Index = index % 10;
-      const 지지Index = index % 12;
-      return 천간[천간Index] + 지지[지지Index] + "년";
+      const baseYear = 1984;
+      const index = (year - baseYear) % 60;
+      const pos = (index + 60) % 60;
+      const 천간Index = pos % 10;
+      const 지지Index = pos % 12;
+      return 천간[천간Index] + 지지[지지Index];
     }
 
     function startQuiz() {
-      const baseYear = parseInt(document.getElementById('baseYear').value);
-      const targetYear = parseInt(document.getElementById('targetYear').value);
-      const timeLimit = parseInt(document.getElementById('timeLimit').value);
+      document.getElementById('result').innerText = '';
+      document.getElementById('userAnswer').value = '';
+      document.getElementById('popup').style.display = 'none';
+      document.getElementById('questionBox').style.display = 'block';
 
-      document.getElementById("baseText").innerText = baseYear;
-      document.getElementById("targetText").innerText = targetYear;
-      document.getElementById("questionBox").style.display = 'block';
-
-      const answer = getGapja(targetYear);
-
-      // 보기를 랜덤하게 구성
-      let options = new Set();
-      options.add(answer);
-      while (options.size < 4) {
-        const offset = Math.floor(Math.random() * 60);
-        options.add(getGapja(1984 + offset));
+      // 예시 연도(2020~2030)는 제외하고 랜덤 연도(2031~2099) 출제
+      let candidateYears = [];
+      for(let y=2020; y<=2099; y++) {
+        if(!예시연도.includes(y)) candidateYears.push(y);
       }
-      let optionsArray = Array.from(options).sort(() => Math.random() - 0.5);
+      answerYear = candidateYears[Math.floor(Math.random() * candidateYears.length)];
+      correctAnswer = getGapja(answerYear);
 
-      let html = "";
-      optionsArray.forEach((opt, idx) => {
-        html += `<button onclick="checkAnswer(this, '${opt}', '${answer}')">${idx+1}) ${opt}</button><br>`;
-      });
-      document.getElementById("options").innerHTML = html;
+      document.getElementById('questionText').innerHTML =
+        `<b>문제:</b> <b>${answerYear}년</b>의 간지는 무엇인가요? <span id="timer"></span>`;
 
-      // 타이머 시작
+      // 타이머
+      const timeLimit = parseInt(document.getElementById('timeLimit').value);
       let timeLeft = timeLimit;
-      document.getElementById("timer").innerText = `${timeLeft}초`;
+      document.getElementById('timer').innerText = ` (남은 시간: ${timeLeft}초)`;
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         timeLeft--;
-        document.getElementById("timer").innerText = `${timeLeft}초`;
+        document.getElementById('timer').innerText = ` (남은 시간: ${timeLeft}초)`;
         if (timeLeft <= 0) {
           clearInterval(timerInterval);
-          document.getElementById("popup").style.display = 'block';
+          document.getElementById('popup').style.display = 'block';
+          document.getElementById('timer').innerText = '';
         }
       }, 1000);
     }
 
-    function checkAnswer(button, selected, correct) {
+    function checkAnswer() {
       clearInterval(timerInterval);
-      if (selected === correct) {
-        alert("정답입니다! 🎉");
+      let userAns = document.getElementById('userAnswer').value.trim();
+      let result = document.getElementById('result');
+      if (!userAns) {
+        result.innerHTML = "정답을 입력해 주세요.";
+        result.style.color = "#b00";
+        return;
+      }
+      if (userAns === correctAnswer) {
+        result.innerHTML = "정답입니다! 🎉";
+        result.style.color = "#0073cf";
       } else {
-        alert(`오답입니다. 정답은 ${correct}입니다.`);
+        result.innerHTML = `오답입니다. <b>정답은 ${correctAnswer}</b>입니다.`;
+        result.style.color = "#b00";
       }
     }
 
     function restart() {
-      document.getElementById("popup").style.display = "none";
+      document.getElementById('popup').style.display = 'none';
       startQuiz();
     }
   </script>
